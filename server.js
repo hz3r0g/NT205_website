@@ -11,9 +11,9 @@ let nextUserId = 1;
 try {
   const defaultPass = 'VPNPass123!';
   const defaultHash = bcrypt.hashSync(defaultPass, 10);
-  const defaultUser = { id: nextUserId++, name: 'wfh_user', email: 'wfh_user', password: defaultHash };
+  const defaultUser = { id: nextUserId++, username: 'wfh_user', name: 'WFH User', email: '', password: defaultHash };
   users.push(defaultUser);
-  console.log('Default user created: username/email=wfh_user, password=VPNPass123!');
+  console.log('Default user created: username=wfh_user, password=VPNPass123!');
 } catch (e) {
   console.error('Failed to create default user', e);
 }
@@ -46,14 +46,14 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.render('register', { error: 'All fields required' });
+  const { name, username, password } = req.body;
+  if (!username || !password) return res.render('register', { error: 'Username and password required' });
   try {
-    if (users.find(u => u.email === email)) return res.render('register', { error: 'Email already in use' });
+    if (users.find(u => u.username === username)) return res.render('register', { error: 'Username already in use' });
     const hash = await bcrypt.hash(password, 10);
-    const user = { id: nextUserId++, name, email, password: hash };
+    const user = { id: nextUserId++, username, name: name || username, email: '', password: hash };
     users.push(user);
-    req.session.user = { id: user.id, name: user.name, email: user.email };
+    req.session.user = { id: user.id, name: user.name, username: user.username };
     res.redirect('/dashboard');
   } catch (e) {
     res.render('register', { error: 'Server error' });
@@ -65,13 +65,13 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.render('login', { error: 'Missing fields' });
-  const user = users.find(u => u.email === email);
+  const { username, password } = req.body;
+  if (!username || !password) return res.render('login', { error: 'Missing fields' });
+  const user = users.find(u => u.username === username);
   if (!user) return res.render('login', { error: 'Invalid credentials' });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.render('login', { error: 'Invalid credentials' });
-  req.session.user = { id: user.id, name: user.name, email: user.email };
+  req.session.user = { id: user.id, name: user.name, username: user.username };
   res.redirect('/dashboard');
 });
 
