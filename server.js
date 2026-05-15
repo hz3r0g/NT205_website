@@ -14,25 +14,36 @@ app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const IN_PROD = process.env.NODE_ENV === 'production';
+const DISABLE_SESSIONS = process.env.DISABLE_SESSIONS === 'true';
 
-app.use(session({
-  name: process.env.SESSION_NAME || 'sid',
-  secret: process.env.SESSION_SECRET || 'dev-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: IN_PROD,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
-  }
-}));
+if (!DISABLE_SESSIONS) {
+  app.use(session({
+    name: process.env.SESSION_NAME || 'sid',
+    secret: process.env.SESSION_SECRET || 'dev-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: IN_PROD,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 1 day
+    }
+  }));
 
-// make current user available in all views
-app.use((req, res, next) => {
-  res.locals.user = req.session && req.session.user ? req.session.user : null;
-  next();
-});
+  // make current user available in all views
+  app.use((req, res, next) => {
+    res.locals.user = req.session && req.session.user ? req.session.user : null;
+    next();
+  });
+} else {
+  // Sessions disabled: clear any existing cookie and provide no session
+  app.use((req, res, next) => {
+    res.clearCookie(process.env.SESSION_NAME || 'sid');
+    res.locals.user = null;
+    req.session = null;
+    next();
+  });
+}
 
 // Simple request logger to help debug requests in production (prints method and url)
 app.use((req, res, next) => {
@@ -120,7 +131,25 @@ app.get('/download/wfh', requireAuth, (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/'));
+  if (req.session) {
+    req.session.destroy(() => res.redirect('/'));
+  } else {
+    res.clearCookie(process.env.SESSION_NAME || 'sid');
+    res.redirect('/');
+  }
+});
+
+// Clear session cookie and destroy session if present
+app.get('/clear-session', (req, res) => {
+  if (req.session) {
+    req.session.destroy(() => {
+      res.clearCookie(process.env.SESSION_NAME || 'sid');
+      res.redirect('/');
+    });
+  } else {
+    res.clearCookie(process.env.SESSION_NAME || 'sid');
+    res.redirect('/');
+  }
 });
 
 // Export app for serverless platforms (Vercel) and for local start
