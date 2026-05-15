@@ -1,0 +1,10 @@
+<%- include('partials/header', { title: 'Dashboard', user: user }) %>
+<section>
+  <h2>Dashboard</h2>
+  <p>Welcome, <strong><%= user.name %></strong>!</p>
+  <p>This is a protected area for company users. Put company info here.</p>
+  <p>
+    <a class="btn" href="/download/wfh">Download VPN config (wfh_user.ovpn)</a>
+  </p>
+</section>
+<%- include('partials/footer') %>
