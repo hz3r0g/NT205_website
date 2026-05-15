@@ -13,11 +13,26 @@ app.set('views', path.join(process.cwd(), 'views'));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 
+const IN_PROD = process.env.NODE_ENV === 'production';
+
 app.use(session({
+  name: process.env.SESSION_NAME || 'sid',
   secret: process.env.SESSION_SECRET || 'dev-secret',
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: IN_PROD,
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
 }));
+
+// make current user available in all views
+app.use((req, res, next) => {
+  res.locals.user = req.session && req.session.user ? req.session.user : null;
+  next();
+});
 
 function requireAuth(req, res, next) {
   if (req.session && req.session.user) return next();
@@ -43,7 +58,10 @@ app.post('/register', async (req, res) => {
         return res.render('register', { error: 'Email already in use' });
       }
       req.session.user = { id: this.lastID, name, email };
-      res.redirect('/dashboard');
+      req.session.save((err) => {
+        if (err) console.error('Session save error:', err);
+        res.redirect('/dashboard');
+      });
     });
   } catch (e) {
     res.render('register', { error: 'Server error' });
@@ -54,15 +72,24 @@ app.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
+// Accept either username or email in the `identifier` field
 app.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.render('login', { error: 'Missing fields' });
-  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+  const { identifier, password } = req.body;
+  if (!identifier || !password) return res.render('login', { error: 'Missing fields' });
+
+  const byEmail = identifier.includes('@');
+  const sql = byEmail ? 'SELECT * FROM users WHERE email = ?' : 'SELECT * FROM users WHERE name = ?';
+  const param = identifier;
+
+  db.get(sql, [param], async (err, user) => {
     if (err || !user) return res.render('login', { error: 'Invalid credentials' });
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.render('login', { error: 'Invalid credentials' });
     req.session.user = { id: user.id, name: user.name, email: user.email };
-    res.redirect('/dashboard');
+    req.session.save((err) => {
+      if (err) console.error('Session save error:', err);
+      res.redirect('/dashboard');
+    });
   });
 });
 

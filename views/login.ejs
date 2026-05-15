@@ -5,7 +5,7 @@
     <p class="error"><%= error %></p>
   <% } %>
   <form method="post" action="/login">
-    <label>Email<br><input name="email" type="email" required></label>
+    <label>Username or Email<br><input name="identifier" type="text" required placeholder="username or email"></label>
     <label>Password<br><input name="password" type="password" required></label>
     <button type="submit">Login</button>
   </form>
