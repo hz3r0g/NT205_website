@@ -28,27 +28,7 @@ app.get('/', (req, res) => {
   res.render('index', { user: req.session.user });
 });
 
-app.get('/register', (req, res) => {
-  res.render('register', { error: null });
-});
-
-app.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.render('register', { error: 'All fields required' });
-  try {
-    const hash = await bcrypt.hash(password, 10);
-    const stmt = db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
-    stmt.run(name, email, hash, function (err) {
-      if (err) {
-        return res.render('register', { error: 'Email already in use' });
-      }
-      req.session.user = { id: this.lastID, name, email };
-      res.redirect('/dashboard');
-    });
-  } catch (e) {
-    res.render('register', { error: 'Server error' });
-  }
-});
+// Registration disabled: user accounts must be created by admin
 
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
