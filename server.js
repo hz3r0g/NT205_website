@@ -34,6 +34,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Simple request logger to help debug requests in production (prints method and url)
+app.use((req, res, next) => {
+  console.log(new Date().toISOString(), req.method, req.url);
+  next();
+});
+
 function requireAuth(req, res, next) {
   if (req.session && req.session.user) return next();
   res.redirect('/login');
@@ -95,6 +101,11 @@ app.post('/login', (req, res) => {
 
 app.get('/dashboard', requireAuth, (req, res) => {
   res.render('dashboard', { user: req.session.user });
+});
+
+// Accept POSTs to /dashboard and redirect to GET (prevents "Cannot POST /dashboard")
+app.post('/dashboard', requireAuth, (req, res) => {
+  res.redirect('/dashboard');
 });
 
 // Download VPN config (protected)
